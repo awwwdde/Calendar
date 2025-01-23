@@ -4,8 +4,12 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.effect.GaussianBlur;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import java.time.LocalDate;
 
 public class CalendarApp extends Application {
@@ -15,65 +19,82 @@ public class CalendarApp extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        primaryStage.setTitle("Calendar App");
+        try {
+            primaryStage.initStyle(StageStyle.TRANSPARENT);
 
-        // Главный контейнер
+            // Корневой контейнер с фоновым размытием
+            StackPane root = new StackPane();
+
+            // Фон с размытием
+            Rectangle background = new Rectangle(WIDTH, HEIGHT);
+            background.setArcWidth(25);
+            background.setArcHeight(25);
+            background.setFill(Color.WHITE);
+            background.setEffect(new GaussianBlur(15));
+
+            // Основной контент
+            VBox mainContainer = createMainContent();
+
+            root.getChildren().addAll(background, mainContainer);
+
+            Scene scene = new Scene(root, WIDTH, HEIGHT);
+            scene.setFill(null); // Прозрачная сцена
+            primaryStage.setScene(scene);
+            primaryStage.show();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private VBox createMainContent() {
         VBox mainContainer = new VBox(10);
-        mainContainer.setPadding(new Insets(10));
+        mainContainer.setPadding(new Insets(15));
         mainContainer.setPrefSize(WIDTH, HEIGHT);
+        mainContainer.setStyle(
+                "-fx-background-color: rgba(255, 255, 255, 0.9);" +
+                        "-fx-background-radius: 25;" +
+                        "-fx-border-radius: 25;" +
+                        "-fx-border-color: rgba(0,0,0,0.1);"
+        );
 
-        // Панель управления (месяц + кнопки)
         HBox controlPanel = new HBox(10);
         controlPanel.setAlignment(Pos.CENTER);
 
         Button prevButton = new Button("◀");
         Button nextButton = new Button("▶");
         Label monthLabel = new Label();
+        monthLabel.setStyle("-fx-text-fill: #333; -fx-font-weight: bold;");
 
-        // Сетка календаря
         GridPane calendarGrid = new GridPane();
         calendarGrid.setAlignment(Pos.TOP_CENTER);
 
-        // Настройка растягивания
-        ColumnConstraints column = new ColumnConstraints();
-        column.setPercentWidth(100/7.0); // 7 колонок
-        calendarGrid.getColumnConstraints().addAll(column, column, column, column, column, column, column);
-
-        // Настройка размеров кнопок дней
-        for (int i = 0; i < 6; i++) { // Максимум 6 строк
+        // Настройка столбцов и строк
+        for (int i = 0; i < 7; i++) {
+            ColumnConstraints column = new ColumnConstraints();
+            column.setPercentWidth(100.0 / 7);
+            calendarGrid.getColumnConstraints().add(column);
+        }
+        for (int i = 0; i < 6; i++) {
             RowConstraints row = new RowConstraints();
-            row.setPercentHeight(100/6.0);
+            row.setPercentHeight(100.0 / 6);
             calendarGrid.getRowConstraints().add(row);
         }
 
-        // Привязка размеров
-        calendarGrid.prefWidthProperty().bind(mainContainer.widthProperty());
-        calendarGrid.prefHeightProperty().bind(mainContainer.heightProperty().multiply(0.8));
+        // Обработчики событий
+        prevButton.setOnAction(e -> updateMonth(-1, monthLabel, calendarGrid));
+        nextButton.setOnAction(e -> updateMonth(1, monthLabel, calendarGrid));
 
-        // Добавление элементов
         controlPanel.getChildren().addAll(prevButton, monthLabel, nextButton);
         mainContainer.getChildren().addAll(controlPanel, calendarGrid);
-
-        // Обработчики событий
-        prevButton.setOnAction(e -> {
-            currentDate = currentDate.minusMonths(1);
-            updateCalendar(monthLabel, calendarGrid);
-        });
-
-        nextButton.setOnAction(e -> {
-            currentDate = currentDate.plusMonths(1);
-            updateCalendar(monthLabel, calendarGrid);
-        });
-
-        // Первоначальное обновление
         updateCalendar(monthLabel, calendarGrid);
 
-        // Настройка сцены
-        Scene scene = new Scene(mainContainer, WIDTH, HEIGHT);
-//        scene.getStylesheets().add(getClass().getResource("styles.css").toExternalForm());
-        primaryStage.setScene(scene);
-        primaryStage.setResizable(false); // Запрет изменения размера
-        primaryStage.show();
+        return mainContainer;
+    }
+
+    private void updateMonth(int monthsToAdd, Label monthLabel, GridPane grid) {
+        currentDate = currentDate.plusMonths(monthsToAdd);
+        updateCalendar(monthLabel, grid);
     }
 
     private void updateCalendar(Label monthLabel, GridPane grid) {
@@ -81,22 +102,28 @@ public class CalendarApp extends Application {
         monthLabel.setText(currentDate.getMonth() + " " + currentDate.getYear());
 
         LocalDate firstOfMonth = currentDate.withDayOfMonth(1);
-        int startDay = firstOfMonth.getDayOfWeek().getValue() % 7; // 0 = Sunday
+        int startDay = firstOfMonth.getDayOfWeek().getValue() - 1;
         int daysInMonth = currentDate.lengthOfMonth();
 
-        // Заполнение дней
         for (int day = 1; day <= daysInMonth; day++) {
             Button dayButton = new Button(String.valueOf(day));
             dayButton.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-            dayButton.setStyle("-fx-font-size: 14;");
+            dayButton.setStyle(
+                    "-fx-background-color: rgba(245,245,245,0.9);" +
+                            "-fx-text-fill: #333;" +
+                            "-fx-background-radius: 10;"
+            );
 
-            // Подсветка текущей даты
+            // Стиль для текущего дня
             if (currentDate.withDayOfMonth(day).equals(LocalDate.now())) {
-                dayButton.setStyle("-fx-color: #90EE90; -fx-font-weight: bold;");
+                dayButton.setStyle(
+                        "-fx-background-color: #90EE90; -fx-font-weight: bold; -fx-background-radius: 10;"
+                );
             }
 
-            int row = (startDay + day - 1) / 7;
-            int column = (startDay + day - 1) % 7;
+            int position = startDay + day - 1;
+            int row = position / 7;
+            int column = position % 7;
 
             grid.add(dayButton, column, row);
         }
